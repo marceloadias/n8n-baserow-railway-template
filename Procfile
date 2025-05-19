@@ -1,0 +1,1 @@
+web: node /usr/local/lib/node_modules/n8n/bin/n8n 
