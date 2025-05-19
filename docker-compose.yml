@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    restart: always
+    environment:
+      - RAILWAY_STATIC_URL=${RAILWAY_STATIC_URL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:${PORT:-80}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`${RAILWAY_STATIC_URL}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${RAILWAY_STATIC_URL}`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    environment:
+      - N8N_HOST=${RAILWAY_STATIC_URL}
+      - N8N_PORT=${PORT:-5678}
+      - N8N_PROTOCOL=https
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=${PGHOST}
+      - DB_POSTGRESDB_PORT=${PGPORT}
+      - DB_POSTGRESDB_DATABASE=${PGDATABASE}
+      - DB_POSTGRESDB_USER=${PGUSER}
+      - DB_POSTGRESDB_PASSWORD=${PGPASSWORD}
+      - QUEUE_BULL_REDIS_HOST=${REDIS_HOST}
+      - QUEUE_BULL_REDIS_PORT=${REDIS_PORT}
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - QUEUE_BULL_REDIS_DB=0
+      - QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD=5000
+      - QUEUE_BULL_REDIS_MAX_RETRIES=3
+      - QUEUE_BULL_REDIS_BACKOFF_STRATEGY=exponential
+      - QUEUE_BULL_REDIS_BACKOFF_DELAY=1000
+      - QUEUE_BULL_REDIS_BACKOFF_MAX_DELAY=10000
+      - QUEUE_BULL_REDIS_BACKOFF_MULTIPLIER=2
+      - QUEUE_BULL_REDIS_BACKOFF_JITTER=0.1
+      - QUEUE_BULL_REDIS_BACKOFF_ATTEMPTS=3
+      - QUEUE_BULL_REDIS_BACKOFF_FACTOR=2
+      - QUEUE_BULL_REDIS_BACKOFF_MIN=1000
+      - QUEUE_BULL_REDIS_BACKOFF_MAX=10000
+      - QUEUE_BULL_REDIS_BACKOFF_RANDOMIZE=true
+      - QUEUE_BULL_REDIS_BACKOFF_CAP=10000
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL=true
+      - QUEUE_BULL_REDIS_BACKOFF_LINEAR=false
+      - QUEUE_BULL_REDIS_BACKOFF_CONSTANT=false
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_FACTOR=2
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_MIN=1000
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_MAX=10000
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_RANDOMIZE=true
+      - QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_CAP=10000
+      - EXECUTIONS_PROCESS=main
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - N8N_WEBHOOK_URL=https://${RAILWAY_STATIC_URL}/webhook
+      - N8N_WEBHOOK_TEST_URL=https://${RAILWAY_STATIC_URL}/webhook-test
+      - N8N_EDITOR_BASE_URL=https://${RAILWAY_STATIC_URL}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_DIAGNOSTICS_CONFIG_ENABLED=false
+      - N8N_PAYLOAD_SIZE_MAX=16MB
+      - N8N_METRICS=false
+      - N8N_DEPLOYMENT_TYPE=main
+      - N8N_BASEROW_HOST=baserow.${RAILWAY_STATIC_URL}
+      - N8N_BASEROW_PORT=3000
+      - N8N_QUEUE_MODE=true
+      - N8N_QUEUE_BULL_REDIS_HOST=${REDIS_HOST}
+      - N8N_QUEUE_BULL_REDIS_PORT=${REDIS_PORT}
+      - N8N_QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - N8N_QUEUE_BULL_REDIS_DB=0
+      - N8N_QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD=5000
+      - N8N_QUEUE_BULL_REDIS_MAX_RETRIES=3
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_STRATEGY=exponential
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_DELAY=1000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_MAX_DELAY=10000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_MULTIPLIER=2
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_JITTER=0.1
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_ATTEMPTS=3
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_FACTOR=2
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_MIN=1000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_MAX=10000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_RANDOMIZE=true
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_CAP=10000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL=true
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_LINEAR=false
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_CONSTANT=false
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_FACTOR=2
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_MIN=1000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_MAX=10000
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_RANDOMIZE=true
+      - N8N_QUEUE_BULL_REDIS_BACKOFF_EXPONENTIAL_CAP=10000
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  baserow:
+    image: baserow/baserow:1.18.0
+    restart: always
+    environment:
+      - BASEROW_PUBLIC_URL=https://baserow.${RAILWAY_STATIC_URL}
+      - BASEROW_CADDY_ADDRESSES=:${PORT:-3000}
+      - BASEROW_DATABASE_HOST=${PGHOST}
+      - BASEROW_DATABASE_PORT=${PGPORT}
+      - BASEROW_DATABASE_NAME=${PGDATABASE}
+      - BASEROW_DATABASE_USER=${PGUSER}
+      - BASEROW_DATABASE_PASSWORD=${PGPASSWORD}
+      - BASEROW_REDIS_HOST=${REDIS_HOST}
+      - BASEROW_REDIS_PORT=${REDIS_PORT}
+      - BASEROW_DISABLE_ANALYTICS=true
+      - BASEROW_DISABLE_TELEMETRY=true
+      - BASEROW_DISABLE_PUBLIC_URL_CHECK=true
+      - BASEROW_DISABLE_ANONYMOUS_USERS=true
+      - BASEROW_DISABLE_USER_REGISTRATION=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  portainer_data: 
