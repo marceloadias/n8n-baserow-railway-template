@@ -7,7 +7,7 @@ RUN npm install -g n8n
 WORKDIR /usr/src/app
 
 # Expor porta
-EXPOSE 5678
+EXPOSE 3000
 
 # Comando para iniciar
 CMD ["n8n", "start"] 
